@@ -1,15 +1,29 @@
 import * as assert from 'assert';
-
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
 import * as vscode from 'vscode';
-// import * as myExtension from '../../extension';
+import { collectDiagnostics } from '../evidence/diagnostics';
 
-suite('Extension Test Suite', () => {
-	vscode.window.showInformationMessage('Start all tests.');
+suite('Evidence Test Suite', () => {
 
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+	test('should collect VS Code diagnostics', async () => {
+		const testFile = vscode.Uri.file('/tmp/doubtcatch-test.ts');
+
+		const diagnostic = new vscode.Diagnostic(
+			new vscode.Range(0, 0, 0, 10),
+			'Test error',
+			vscode.DiagnosticSeverity.Error
+		);
+
+		vscode.languages.createDiagnosticCollection('doubtcatch-test')
+			.set(testFile, [diagnostic]);
+
+		const evidence = collectDiagnostics();
+
+		const found = evidence.find(
+			item => item.message === 'Test error'
+		);
+
+		assert.ok(found);
+		assert.strictEqual(found?.line, 1);
+		assert.strictEqual(found?.severity, 'error');
 	});
 });
