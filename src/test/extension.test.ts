@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { collectDiagnostics } from '../evidence/diagnostics';
 import { collectGitChanges } from '../evidence/git';
+import { collectTerminalEvidence } from '../evidence/terminal';
 
 suite('Evidence Test Suite', () => {
 
@@ -33,4 +34,22 @@ suite('Evidence Test Suite', () => {
     const changes = collectGitChanges(workspacePath);
     assert.ok(Array.isArray(changes));
   });
+
+	test('should collect terminal evidence', () => {
+    const evidence = collectTerminalEvidence('node', ['-e', 'console.log("test")']);
+
+    assert.strictEqual(evidence.exitCode, 0);
+    assert.strictEqual(evidence.output.trim(), 'test');
+  });
+
+	test('should capture failed terminal command', () => {
+    const evidence = collectTerminalEvidence(
+        'node',
+        ['-e', 'console.error("test error"); process.exit(1)']
+    );
+
+    assert.strictEqual(evidence.exitCode, 1);
+    assert.ok(evidence.output.includes('test error'));
+});
+
 });
