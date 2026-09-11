@@ -4,6 +4,7 @@ import { collectDiagnostics } from '../evidence/diagnostics';
 import { collectGitChanges } from '../evidence/git';
 import { collectTerminalEvidence } from '../evidence/terminal';
 import { collectFileContext } from '../evidence/context';
+import { buildEvidencePacket } from '../evidence/packet';
 
 suite('Evidence Test Suite', () => {
 
@@ -60,6 +61,21 @@ suite('Evidence Test Suite', () => {
 
     assert.strictEqual(evidence.file, filePath);
     assert.ok(evidence.content.includes('should collect file context'));
+  });
+
+	test('should build an evidence packet', () => {
+    const packet = buildEvidencePacket(
+        process.cwd(),
+        [__filename],
+        'node',
+        ['-e', 'console.log("packet test")']
+    );
+
+    assert.ok(Array.isArray(packet.diagnostics));
+    assert.ok(Array.isArray(packet.gitChanges));
+    assert.strictEqual(packet.terminal?.exitCode, 0);
+    assert.ok(Array.isArray(packet.fileContexts));
+    assert.strictEqual(packet.fileContexts.length, 1);
   });
 
 });
