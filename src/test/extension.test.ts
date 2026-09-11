@@ -6,7 +6,9 @@ import { collectTerminalEvidence } from "../evidence/terminal";
 import { collectFileContext } from "../evidence/context";
 import { buildEvidencePacket } from "../evidence/packet";
 import { writeEvidenceToOutput } from "../evidence/output";
-
+import { findRelevantFiles } from "../evidence/relevance";
+import { writeFileSync, mkdirSync, rmSync } from "fs";
+import { join } from "path";
 suite("Evidence Test Suite", () => {
   test("should collect VS Code diagnostics", async () => {
     const testFile = vscode.Uri.file("/tmp/doubtcatch-test.ts");
@@ -74,7 +76,8 @@ suite("Evidence Test Suite", () => {
     assert.ok(Array.isArray(packet.gitChanges));
     assert.strictEqual(packet.terminal?.exitCode, 0);
     assert.ok(Array.isArray(packet.fileContexts));
-    assert.strictEqual(packet.fileContexts.length, 1);
+    assert.ok(packet.fileContexts.length >= 1);
+		assert.ok(packet.fileContexts.some((file) => file.file === __filename));
   });
 
 	test("should write evidence to output channel", () => {
@@ -85,5 +88,40 @@ suite("Evidence Test Suite", () => {
   writeEvidenceToOutput(output, packet);
 
   output.dispose();
+  });
+
+	test("should find imported files as relevant", () => {
+  const workspacePath = process.cwd();
+
+  const files = findRelevantFiles(
+    workspacePath,
+    __filename,
+  );
+
+  assert.ok(files.includes(__filename));
+  });
+
+	test("should find relative imported files", () => {
+  const testDirectory = join(process.cwd(), "temp-relevance-test");
+
+  mkdirSync(testDirectory, { recursive: true });
+
+  const activeFile = join(testDirectory, "test-active.ts");
+  const helperFile = join(testDirectory, "test-helper.ts");
+
+  writeFileSync(
+    activeFile,
+    'import { helper } from "./test-helper";\n\nconsole.log(helper);',
+  );
+
+  writeFileSync(helperFile, "export const helper = true;");
+
+  const files = findRelevantFiles(process.cwd(), activeFile);
+
+  assert.ok(files.includes(activeFile));
+  assert.ok(files.includes(helperFile));
+
+  rmSync(testDirectory, { recursive: true, force: true });
 });
+
 });

@@ -2,6 +2,7 @@ import { collectDiagnostics, DiagnosticEvidence } from './diagnostics';
 import { collectGitChanges } from './git';
 import { collectTerminalEvidence, TerminalEvidence } from './terminal';
 import { collectFileContext, FileContext } from './context';
+import { findRelevantFiles } from "./relevance";
 
 export interface EvidencePacket {
     diagnostics: DiagnosticEvidence[];
@@ -22,6 +23,9 @@ export function buildEvidencePacket(
         terminal: command
             ? collectTerminalEvidence(command, args)
             : undefined,
-        fileContexts: filePaths.map(file => collectFileContext(file)),
+        fileContexts: findRelevantFiles(
+  workspacePath,
+  filePaths[0],
+).map(file => collectFileContext(file)),
     };
 }
