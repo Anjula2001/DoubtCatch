@@ -5,6 +5,7 @@ import { collectGitChanges } from "../evidence/git";
 import { collectTerminalEvidence } from "../evidence/terminal";
 import { collectFileContext } from "../evidence/context";
 import { buildEvidencePacket } from "../evidence/packet";
+import { writeEvidenceToOutput } from "../evidence/output";
 
 suite("Evidence Test Suite", () => {
   test("should collect VS Code diagnostics", async () => {
@@ -75,4 +76,14 @@ suite("Evidence Test Suite", () => {
     assert.ok(Array.isArray(packet.fileContexts));
     assert.strictEqual(packet.fileContexts.length, 1);
   });
+
+	test("should write evidence to output channel", () => {
+  const output = vscode.window.createOutputChannel("DoubtCatch Test");
+
+  const packet = buildEvidencePacket(process.cwd(), [__filename]);
+
+  writeEvidenceToOutput(output, packet);
+
+  output.dispose();
+});
 });
