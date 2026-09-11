@@ -98,7 +98,7 @@ suite("Evidence Test Suite", () => {
     __filename,
   );
 
-  assert.ok(files.includes(__filename));
+  assert.ok(files.some((file) => file.file === __filename));
   });
 
 	test("should find relative imported files", () => {
@@ -118,8 +118,15 @@ suite("Evidence Test Suite", () => {
 
   const files = findRelevantFiles(process.cwd(), activeFile);
 
-  assert.ok(files.includes(activeFile));
-  assert.ok(files.includes(helperFile));
+  assert.ok(files.some((file) => file.file === activeFile));
+  assert.ok(files.some((file) => file.file === helperFile));
+	assert.ok(
+  files.some(
+    (file) =>
+      file.file === helperFile &&
+      file.reason.includes("Imported by"),
+  ),
+);
 
   rmSync(testDirectory, { recursive: true, force: true });
 });

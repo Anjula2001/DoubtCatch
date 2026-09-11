@@ -26,6 +26,6 @@ export function buildEvidencePacket(
         fileContexts: findRelevantFiles(
   workspacePath,
   filePaths[0],
-).map(file => collectFileContext(file)),
+).map(file => collectFileContext(file.file)),
     };
 }

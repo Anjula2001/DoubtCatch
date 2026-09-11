@@ -1,18 +1,28 @@
 import { existsSync, readFileSync } from "fs";
 import { dirname, extname, join, resolve } from "path";
 
+export interface RelevantFile {
+  file: string;
+  reason: string;
+}
+
 export function findRelevantFiles(
   workspacePath: string,
   activeFile?: string,
-): string[] {
+): RelevantFile[] {
   if (!activeFile || !existsSync(activeFile)) {
     return [];
   }
 
-  const files = new Set<string>();
-  files.add(activeFile);
+  const files = new Map<string, RelevantFile>();
+
+  files.set(activeFile, {
+    file: activeFile,
+    reason: "Active file",
+  });
 
   const content = readFileSync(activeFile, "utf-8");
+
   const importPattern =
     /(?:import\s+(?:[\s\S]*?\s+from\s+)?|require\()\s*["'](\.{1,2}\/[^"']+)["']\s*\)?/g;
 
@@ -26,6 +36,7 @@ export function findRelevantFiles(
     }
 
     const absolutePath = resolve(activeDirectory, importPath);
+
     const candidates = [
       absolutePath,
       `${absolutePath}.ts`,
@@ -42,9 +53,12 @@ export function findRelevantFiles(
     );
 
     if (existingFile) {
-      files.add(existingFile);
+      files.set(existingFile, {
+        file: existingFile,
+        reason: `Imported by ${activeFile}`,
+      });
     }
   }
 
-  return Array.from(files);
+  return Array.from(files.values());
 }
