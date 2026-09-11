@@ -16,6 +16,10 @@
       {
         "command": "doubtcatch.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "doubtcatch.captureEvidence",
+        "title": "DoubtCatch: Capture Evidence"
       }
     ]
   },
