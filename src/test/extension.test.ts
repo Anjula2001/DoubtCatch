@@ -56,6 +56,10 @@ suite("Evidence Test Suite", () => {
 
     assert.strictEqual(evidence.exitCode, 1);
     assert.ok(evidence.output.includes("test error"));
+		assert.strictEqual(
+  evidence.command,
+  'node -e console.error("test error"); process.exit(1)',
+);
   });
 
   test("should collect file context", () => {
