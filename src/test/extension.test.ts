@@ -9,6 +9,7 @@ import { writeEvidenceToOutput } from "../evidence/output";
 import { findRelevantFiles } from "../evidence/relevance";
 import { writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
+import { buildAgentPrompt } from "../ai/prompt";
 suite("Evidence Test Suite", () => {
   test("should collect VS Code diagnostics", async () => {
     const testFile = vscode.Uri.file("/tmp/doubtcatch-test.ts");
@@ -133,6 +134,39 @@ suite("Evidence Test Suite", () => {
 );
 
   rmSync(testDirectory, { recursive: true, force: true });
+});
+
+test("should build an AI agent prompt from evidence", () => {
+  const packet = {
+    diagnostics: [
+      {
+        file: "src/app.ts",
+        line: 10,
+        severity: "error",
+        message: "Something went wrong",
+      },
+    ],
+    gitChanges: ["src/app.ts"],
+    terminal: {
+      command: "npm test",
+      output: "test failed",
+      exitCode: 1,
+    },
+    fileContexts: [
+      {
+        file: "src/app.ts",
+        content: "console.log('hello');",
+      },
+    ],
+  };
+
+  const prompt = buildAgentPrompt(packet);
+
+  assert.ok(prompt.includes("Something went wrong"));
+  assert.ok(prompt.includes("src/app.ts"));
+  assert.ok(prompt.includes("test failed"));
+  assert.ok(prompt.includes("console.log('hello');"));
+  assert.ok(prompt.includes("most likely root cause"));
 });
 
 });
