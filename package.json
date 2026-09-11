@@ -13,15 +13,19 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "doubtcatch.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "doubtcatch.captureEvidence",
-        "title": "DoubtCatch: Capture Evidence"
-      }
-    ]
+  {
+    "command": "doubtcatch.helloWorld",
+    "title": "Hello World"
+  },
+  {
+    "command": "doubtcatch.captureEvidence",
+    "title": "DoubtCatch: Capture Evidence"
+  },
+  {
+    "command": "doubtcatch.generateAgentPrompt",
+    "title": "DoubtCatch: Generate Agent Prompt"
+  }
+]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

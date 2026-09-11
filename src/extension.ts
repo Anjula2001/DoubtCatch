@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { buildEvidencePacket } from "./evidence/packet";
 import { writeEvidenceToOutput } from "./evidence/output";
+import { buildAgentPrompt } from "./ai/prompt";
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -43,9 +44,35 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+	const generateAgentPrompt = vscode.commands.registerCommand(
+  "doubtcatch.generateAgentPrompt",
+  async () => {
+    const workspace = vscode.workspace.workspaceFolders?.[0];
+
+    if (!workspace) {
+      vscode.window.showWarningMessage("DoubtCatch: No workspace is open.");
+      return;
+    }
+
+    const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+    const filePaths = activeFile ? [activeFile] : [];
+
+    const packet = buildEvidencePacket(workspace.uri.fsPath, filePaths);
+    const prompt = buildAgentPrompt(packet);
+
+    await vscode.env.clipboard.writeText(prompt);
+
+    vscode.window.showInformationMessage(
+      "DoubtCatch: Agent prompt copied to clipboard.",
+    );
+  },
+);
+
   context.subscriptions.push(captureEvidence);
 
   context.subscriptions.push(disposable);
+
+	context.subscriptions.push(generateAgentPrompt);
 }
 
 // This method is called when your extension is deactivated
