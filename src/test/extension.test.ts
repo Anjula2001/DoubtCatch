@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { collectDiagnostics } from '../evidence/diagnostics';
+import { collectGitChanges } from '../evidence/git';
 
 suite('Evidence Test Suite', () => {
 
@@ -26,4 +27,10 @@ suite('Evidence Test Suite', () => {
 		assert.strictEqual(found?.line, 1);
 		assert.strictEqual(found?.severity, 'error');
 	});
+
+	test('should collect Git changed files', () => {
+    const workspacePath = process.cwd();
+    const changes = collectGitChanges(workspacePath);
+    assert.ok(Array.isArray(changes));
+  });
 });
