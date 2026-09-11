@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { collectDiagnostics } from '../evidence/diagnostics';
 import { collectGitChanges } from '../evidence/git';
 import { collectTerminalEvidence } from '../evidence/terminal';
+import { collectFileContext } from '../evidence/context';
 
 suite('Evidence Test Suite', () => {
 
@@ -50,6 +51,15 @@ suite('Evidence Test Suite', () => {
 
     assert.strictEqual(evidence.exitCode, 1);
     assert.ok(evidence.output.includes('test error'));
-});
+  });
+
+	test('should collect file context', () => {
+    const filePath = __filename;
+
+    const evidence = collectFileContext(filePath);
+
+    assert.strictEqual(evidence.file, filePath);
+    assert.ok(evidence.content.includes('should collect file context'));
+  });
 
 });
