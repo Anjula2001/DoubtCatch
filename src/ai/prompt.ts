@@ -11,6 +11,9 @@ export function buildAgentPrompt(packet: EvidencePacket): string {
     "Do not modify unrelated files. Base your reasoning on the provided evidence."
   );
 
+  sections.push(`User Symptom:
+${packet.userSymptom}`);
+
   sections.push(`Diagnostics:
 ${JSON.stringify(packet.diagnostics, null, 2)}`);
 

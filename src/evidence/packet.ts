@@ -5,19 +5,22 @@ import { collectFileContext, FileContext } from './context';
 import { findRelevantFiles } from "./relevance";
 
 export interface EvidencePacket {
-    diagnostics: DiagnosticEvidence[];
-    gitChanges: string[];
-    terminal?: TerminalEvidence;
-    fileContexts: FileContext[];
+  userSymptom: string;
+  diagnostics: DiagnosticEvidence[];
+  gitChanges: string[];
+  terminal?: TerminalEvidence;
+  fileContexts: FileContext[];
 }
 
 export function buildEvidencePacket(
-    workspacePath: string,
-    filePaths: string[],
-    command?: string,
-    args: string[] = []
+  workspacePath: string,
+  filePaths: string[],
+  userSymptom = "",
+  command?: string,
+  args: string[] = [],
 ): EvidencePacket {
     return {
+      userSymptom,
         diagnostics: collectDiagnostics(),
         gitChanges: collectGitChanges(workspacePath),
         terminal: command

@@ -1,11 +1,12 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { buildEvidencePacket } from "./evidence/packet";
+import { buildEvidencePacket, EvidencePacket } from "./evidence/packet";
 import { writeEvidenceToOutput } from "./evidence/output";
 import { buildAgentPrompt } from "./ai/prompt";
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
+let lastEvidencePacket: EvidencePacket | undefined;
 export function activate(context: vscode.ExtensionContext) {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
@@ -26,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const captureEvidence = vscode.commands.registerCommand(
     "doubtcatch.captureEvidence",
-    () => {
+    async () => {
       const workspace = vscode.workspace.workspaceFolders?.[0];
 
       if (!workspace) {
@@ -34,11 +35,24 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+      const userSymptom = await vscode.window.showInputBox({
+  prompt: "What problem are you seeing?",
+  placeHolder: "Example: The save button does not save the member",
+});
 
-      const filePaths = activeFile ? [activeFile] : [];
+if (userSymptom === undefined) {
+  return;
+}
 
-      const packet = buildEvidencePacket(workspace.uri.fsPath, filePaths);
+const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+const filePaths = activeFile ? [activeFile] : [];
+
+const packet = buildEvidencePacket(
+  workspace.uri.fsPath,
+  filePaths,
+  userSymptom,
+);
+lastEvidencePacket = packet;
 
       writeEvidenceToOutput(output, packet);
     },
@@ -57,8 +71,14 @@ export function activate(context: vscode.ExtensionContext) {
     const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
     const filePaths = activeFile ? [activeFile] : [];
 
-    const packet = buildEvidencePacket(workspace.uri.fsPath, filePaths);
-    const prompt = buildAgentPrompt(packet);
+    if (!lastEvidencePacket) {
+  vscode.window.showWarningMessage(
+    "DoubtCatch: Capture evidence first.",
+  );
+  return;
+}
+
+const prompt = buildAgentPrompt(lastEvidencePacket);
 
     await vscode.env.clipboard.writeText(prompt);
 

@@ -10,6 +10,9 @@ export function writeEvidenceToOutput(
   output.appendLine("=== DoubtCatch Evidence ===");
   output.appendLine("");
 
+  output.appendLine("User Symptom:");
+  output.appendLine(packet.userSymptom);
+
   output.appendLine("Diagnostics:");
   output.appendLine(JSON.stringify(packet.diagnostics, null, 2));
 
