@@ -15,6 +15,6 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 **/.DS_Store
 
-# The full-size logo is only used by the README on GitHub; the packaged
-# extension ships the 128x128 icon referenced by package.json.
+# Banner used by the README on GitHub and by already-published Marketplace
+# pages. The packaged extension ships assets/icon.png (see package.json).
 assets/Logo.png

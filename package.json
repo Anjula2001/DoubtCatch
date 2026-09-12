@@ -2,7 +2,8 @@
   "name": "doubtcatch",
   "displayName": "DoubtCatch",
   "description": "Capture concrete debugging evidence from your project and turn it into an evidence-based prompt for any AI coding agent.",
-  "version": "0.1.0",
+  "publisher": "doubt-catch",
+  "version": "0.1.1",
   "icon": "assets/icon.png",
   "repository": {
     "type": "git",
