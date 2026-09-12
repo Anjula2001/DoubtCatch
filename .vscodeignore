@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+.github/**
 out/**
 node_modules/**
 src/**
@@ -12,3 +13,8 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+**/.DS_Store
+
+# The full-size logo is only used by the README on GitHub; the packaged
+# extension ships the 128x128 icon referenced by package.json.
+assets/Logo.png

@@ -1,5 +1,23 @@
+# Build output
 out
 dist
-node_modules
-.vscode-test/
 *.vsix
+
+# Dependencies
+node_modules
+
+# Test runner
+.vscode-test/
+
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+
+# OS
+.DS_Store

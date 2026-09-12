@@ -1,31 +1,47 @@
 {
   "name": "doubtcatch",
   "displayName": "DoubtCatch",
-  "description": "An agent-agnostic VS Code extension for diagnosing and verifying AI-assisted coding issues.",
-  "version": "0.0.1",
+  "description": "Capture concrete debugging evidence from your project and turn it into an evidence-based prompt for any AI coding agent.",
+  "version": "0.1.0",
+  "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Anjula2001/DoubtCatch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Anjula2001/DoubtCatch/issues"
+  },
+  "homepage": "https://github.com/Anjula2001/DoubtCatch#readme",
   "engines": {
     "vscode": "^1.137.0"
   },
   "categories": [
+    "AI",
+    "Debuggers",
     "Other"
+  ],
+  "keywords": [
+    "ai",
+    "debugging",
+    "prompt",
+    "evidence",
+    "agent"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-  {
-    "command": "doubtcatch.helloWorld",
-    "title": "Hello World"
-  },
-  {
-    "command": "doubtcatch.captureEvidence",
-    "title": "DoubtCatch: Capture Evidence"
-  },
-  {
-    "command": "doubtcatch.generateAgentPrompt",
-    "title": "DoubtCatch: Generate Agent Prompt"
-  }
-]
+      {
+        "command": "doubtcatch.captureEvidence",
+        "category": "DoubtCatch",
+        "title": "Capture Evidence"
+      },
+      {
+        "command": "doubtcatch.generateAgentPrompt",
+        "category": "DoubtCatch",
+        "title": "Generate Agent Prompt"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

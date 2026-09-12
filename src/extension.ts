@@ -1,99 +1,170 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { buildEvidencePacket, EvidencePacket } from "./evidence/packet";
 import { writeEvidenceToOutput } from "./evidence/output";
+import { hasShellOperator, parseCommandLine } from "./evidence/commandLine";
 import { buildAgentPrompt } from "./ai/prompt";
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+
+/** The most recent capture, reused by the Generate Agent Prompt command. */
 let lastEvidencePacket: EvidencePacket | undefined;
-export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log('Congratulations, your extension "doubtcatch" is now active!');
-	const output = vscode.window.createOutputChannel('DoubtCatch');
 
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  const disposable = vscode.commands.registerCommand(
-    "doubtcatch.helloWorld",
-    () => {
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      vscode.window.showInformationMessage("Hello World from DoubtCatch!");
+/**
+ * Asks whether the user wants to run a command as part of this capture, and if
+ * so which one. Returns undefined when the user skips or cancels; nothing is
+ * ever executed without an explicit choice here.
+ */
+async function askForTerminalCommand(): Promise<string[] | undefined> {
+  const choice = await vscode.window.showQuickPick(
+    [
+      {
+        label: "Skip",
+        description: "Capture evidence without running anything",
+      },
+      {
+        label: "Run a command",
+        description: "For example: npm test",
+      },
+    ],
+    {
+      title: "DoubtCatch: Capture a terminal command?",
+      placeHolder: "Running a command records its output and exit code",
     },
   );
 
-  const captureEvidence = vscode.commands.registerCommand(
-    "doubtcatch.captureEvidence",
-    async () => {
-      const workspace = vscode.workspace.workspaceFolders?.[0];
+  if (!choice || choice.label === "Skip") {
+    return undefined;
+  }
 
-      if (!workspace) {
-        vscode.window.showWarningMessage("DoubtCatch: No workspace is open.");
-        return;
-      }
+  const input = await vscode.window.showInputBox({
+    title: "DoubtCatch: Command to run",
+    prompt: "Run in the workspace root. No shell is used.",
+    placeHolder: "npm test",
+  });
 
-      const userSymptom = await vscode.window.showInputBox({
-  prompt: "What problem are you seeing?",
-  placeHolder: "Example: The save button does not save the member",
-});
+  if (!input?.trim()) {
+    return undefined;
+  }
 
-if (userSymptom === undefined) {
-  return;
-}
+  const tokens = parseCommandLine(input);
 
-const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
-const filePaths = activeFile ? [activeFile] : [];
+  if (tokens.length === 0) {
+    return undefined;
+  }
 
-const packet = buildEvidencePacket(
-  workspace.uri.fsPath,
-  filePaths,
-  userSymptom,
-);
-lastEvidencePacket = packet;
-
-      writeEvidenceToOutput(output, packet);
-    },
-  );
-
-	const generateAgentPrompt = vscode.commands.registerCommand(
-  "doubtcatch.generateAgentPrompt",
-  async () => {
-    const workspace = vscode.workspace.workspaceFolders?.[0];
-
-    if (!workspace) {
-      vscode.window.showWarningMessage("DoubtCatch: No workspace is open.");
-      return;
-    }
-
-    const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
-    const filePaths = activeFile ? [activeFile] : [];
-
-    if (!lastEvidencePacket) {
-  vscode.window.showWarningMessage(
-    "DoubtCatch: Capture evidence first.",
-  );
-  return;
-}
-
-const prompt = buildAgentPrompt(lastEvidencePacket);
-
-    await vscode.env.clipboard.writeText(prompt);
-
-    vscode.window.showInformationMessage(
-      "DoubtCatch: Agent prompt copied to clipboard.",
+  if (hasShellOperator(tokens)) {
+    vscode.window.showWarningMessage(
+      "DoubtCatch runs a single command without a shell, so operators like && are passed through as plain arguments.",
     );
-  },
-);
+  }
 
-  context.subscriptions.push(captureEvidence);
-
-  context.subscriptions.push(disposable);
-
-	context.subscriptions.push(generateAgentPrompt);
+  return tokens;
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+async function captureEvidence(output: vscode.OutputChannel): Promise<void> {
+  const workspace = vscode.workspace.workspaceFolders?.[0];
+
+  if (!workspace) {
+    vscode.window.showWarningMessage(
+      "DoubtCatch: Open a folder or workspace before capturing evidence.",
+    );
+    return;
+  }
+
+  const userSymptom = await vscode.window.showInputBox({
+    title: "DoubtCatch: Capture Evidence",
+    prompt: "What problem are you seeing?",
+    placeHolder: "Example: The save button does not save the member",
+  });
+
+  if (userSymptom === undefined) {
+    return;
+  }
+
+  const tokens = await askForTerminalCommand();
+  const [command, ...args] = tokens ?? [];
+
+  const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
+  const filePaths = activeFile ? [activeFile] : [];
+
+  const packet = await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: command
+        ? `DoubtCatch: Capturing evidence (running ${command})...`
+        : "DoubtCatch: Capturing evidence...",
+    },
+    () =>
+      buildEvidencePacket(
+        workspace.uri.fsPath,
+        filePaths,
+        userSymptom,
+        command,
+        args,
+      ),
+  );
+
+  lastEvidencePacket = packet;
+
+  writeEvidenceToOutput(output, packet);
+
+  const summary = [
+    `${packet.diagnostics.length} diagnostic(s)`,
+    `${packet.gitChanges.length} changed file(s)`,
+    `${packet.fileContexts.length} relevant file(s)`,
+  ].join(", ");
+
+  const generate = "Generate Agent Prompt";
+
+  const action = await vscode.window.showInformationMessage(
+    `DoubtCatch: Evidence captured — ${summary}.`,
+    generate,
+  );
+
+  if (action === generate) {
+    await vscode.commands.executeCommand("doubtcatch.generateAgentPrompt");
+  }
+}
+
+async function generateAgentPrompt(): Promise<void> {
+  if (!lastEvidencePacket) {
+    vscode.window.showWarningMessage(
+      'DoubtCatch: No evidence captured yet. Run "DoubtCatch: Capture Evidence" first.',
+    );
+    return;
+  }
+
+  const prompt = buildAgentPrompt(lastEvidencePacket);
+
+  await vscode.env.clipboard.writeText(prompt);
+
+  vscode.window.showInformationMessage(
+    "DoubtCatch: Agent prompt copied to clipboard. Paste it into your AI coding agent.",
+  );
+}
+
+export function activate(context: vscode.ExtensionContext) {
+  const output = vscode.window.createOutputChannel("DoubtCatch");
+
+  context.subscriptions.push(
+    output,
+
+    vscode.commands.registerCommand("doubtcatch.captureEvidence", async () => {
+      try {
+        await captureEvidence(output);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(
+          `DoubtCatch: Could not capture evidence — ${message}`,
+        );
+      }
+    }),
+
+    vscode.commands.registerCommand(
+      "doubtcatch.generateAgentPrompt",
+      generateAgentPrompt,
+    ),
+  );
+}
+
+export function deactivate() {
+  lastEvidencePacket = undefined;
+}
