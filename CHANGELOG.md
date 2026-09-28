@@ -5,6 +5,13 @@ All notable changes to the DoubtCatch extension are documented in this file.
 This project follows [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — Sidebar UI
+
+### Added
+
+- DoubtCatch Activity Bar icon and native sidebar.
+- Sidebar buttons for **Capture Evidence** and **Generate AI Prompt**.
+
 ## [0.1.0] — V1
 
 First usable release: capture evidence, generate a prompt, paste it into any
