@@ -41,8 +41,31 @@
         "command": "doubtcatch.generateAgentPrompt",
         "category": "DoubtCatch",
         "title": "Generate Agent Prompt"
+      },
+      {
+        "command": "doubtcatch.focus",
+        "category": "DoubtCatch",
+        "title": "Focus Sidebar"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "doubtcatch",
+          "title": "DoubtCatch",
+          "icon": "assets/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "doubtcatch": [
+        {
+          "type": "webview",
+          "id": "doubtcatch.sidebar",
+          "name": "Evidence"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

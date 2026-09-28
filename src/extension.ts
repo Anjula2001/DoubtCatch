@@ -3,6 +3,7 @@ import { buildEvidencePacket, EvidencePacket } from "./evidence/packet";
 import { writeEvidenceToOutput } from "./evidence/output";
 import { hasShellOperator, parseCommandLine } from "./evidence/commandLine";
 import { buildAgentPrompt } from "./ai/prompt";
+import { DoubtCatchViewProvider } from "./sidebar";
 
 /** The most recent capture, reused by the Generate Agent Prompt command. */
 let lastEvidencePacket: EvidencePacket | undefined;
@@ -59,27 +60,32 @@ async function askForTerminalCommand(): Promise<string[] | undefined> {
   return tokens;
 }
 
-async function captureEvidence(output: vscode.OutputChannel): Promise<void> {
+async function captureEvidence(
+  output: vscode.OutputChannel,
+  inputs: { symptom?: string; commandLine?: string; notify?: boolean } = {},
+): Promise<EvidencePacket | undefined> {
   const workspace = vscode.workspace.workspaceFolders?.[0];
 
   if (!workspace) {
     vscode.window.showWarningMessage(
       "DoubtCatch: Open a folder or workspace before capturing evidence.",
     );
-    return;
+    return undefined;
   }
 
-  const userSymptom = await vscode.window.showInputBox({
+  const userSymptom = inputs.symptom ?? (await vscode.window.showInputBox({
     title: "DoubtCatch: Capture Evidence",
     prompt: "What problem are you seeing?",
     placeHolder: "Example: The save button does not save the member",
-  });
+  }));
 
   if (userSymptom === undefined) {
-    return;
+    return undefined;
   }
 
-  const tokens = await askForTerminalCommand();
+  const tokens = inputs.commandLine !== undefined
+    ? parseCommandLine(inputs.commandLine)
+    : await askForTerminalCommand();
   const [command, ...args] = tokens ?? [];
 
   const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
@@ -114,14 +120,18 @@ async function captureEvidence(output: vscode.OutputChannel): Promise<void> {
 
   const generate = "Generate Agent Prompt";
 
-  const action = await vscode.window.showInformationMessage(
-    `DoubtCatch: Evidence captured — ${summary}.`,
-    generate,
-  );
+  const action = inputs.notify === false
+    ? undefined
+    : await vscode.window.showInformationMessage(
+        `DoubtCatch: Evidence captured — ${summary}.`,
+        generate,
+      );
 
   if (action === generate) {
     await vscode.commands.executeCommand("doubtcatch.generateAgentPrompt");
   }
+
+  return packet;
 }
 
 async function generateAgentPrompt(): Promise<void> {
@@ -143,13 +153,38 @@ async function generateAgentPrompt(): Promise<void> {
 
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel("DoubtCatch");
+  const sidebar = new DoubtCatchViewProvider(context.extensionUri, {
+    capture: async (symptom, commandLine) => {
+      try {
+        return await captureEvidence(output, {
+          symptom,
+          commandLine,
+          notify: false,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(
+          `DoubtCatch: Could not capture evidence — ${message}`,
+        );
+        return undefined;
+      }
+    },
+    generate: generateAgentPrompt,
+  });
 
   context.subscriptions.push(
     output,
+    vscode.window.registerWebviewViewProvider(DoubtCatchViewProvider.viewType, sidebar),
+    vscode.commands.registerCommand("doubtcatch.focus", () =>
+      vscode.commands.executeCommand("workbench.view.extension.doubtcatch"),
+    ),
 
     vscode.commands.registerCommand("doubtcatch.captureEvidence", async () => {
       try {
-        await captureEvidence(output);
+        const packet = await captureEvidence(output);
+        if (packet) {
+          sidebar.setPacket(packet);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(
