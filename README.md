@@ -6,11 +6,13 @@
   **Catch the problem. Prove the fix.**
 </div>
 
-DoubtCatch captures concrete debugging evidence from a VS Code project and turns
-it into an evidence-based prompt for AI coding agents.
+DoubtCatch is an agent-agnostic VS Code extension for diagnosing and verifying
+AI-assisted coding issues. It captures concrete debugging evidence from a VS
+Code project and turns it into an evidence-based prompt for an AI coding agent.
 
-It is **not** another coding agent. It is the evidence layer you reach for when
-an agent has already tried to fix something and the problem is still there.
+It is **not** an AI coding agent. It is the evidence layer you reach for when
+an agent has already tried to fix something and the problem is still there, or
+when you need stronger evidence before deciding what to do next.
 
 ---
 
@@ -35,19 +37,59 @@ of from what the program *does*. DoubtCatch gives them the second thing:
 diagnostics, real command output, real exit codes, and the actual working-tree
 state.
 
+## How it works
+
+```
+Describe the problem
+  ↓
+Capture Evidence
+  ↓
+Diagnostics + Git + Terminal + Relevant Files
+  ↓
+EvidencePacket
+  ↓
+Generate AI Prompt
+  ↓
+Use the prompt with your AI coding agent
+```
+
+You describe the behavior you are seeing. DoubtCatch collects the editor
+diagnostics, working-tree changes, optional command output, and relevant local
+file context into one `EvidencePacket`. It then renders that packet into a
+structured prompt and copies it to the clipboard for use with the AI coding
+agent of your choice.
+
+## VS Code integration
+
+DoubtCatch provides a dedicated Activity Bar icon and native sidebar:
+
+```
+Activity Bar
+    ↓
+DoubtCatch
+    ↓
+Capture Evidence
+Generate AI Prompt
+```
+
+The sidebar is the primary entry point, so you do not need to open the Command
+Palette for the normal V1 workflow. The original Command Palette commands remain
+available for keyboard and power users.
+
+<!-- TODO: Add a screenshot of the DoubtCatch Activity Bar icon and sidebar. -->
+
 ## V1 workflow
 
 1. Open your project in VS Code.
-2. Observe a problem.
-3. Run **DoubtCatch: Capture Evidence** from the Command Palette.
-4. Describe the symptom in your own words.
-5. Optionally capture a terminal command (for example `npm test`), or skip it.
-6. DoubtCatch collects editor diagnostics, Git changes, and relevant file context.
-7. Run **DoubtCatch: Generate Agent Prompt**.
-8. The prompt is copied to your clipboard.
-9. Paste it into Claude Code, Cursor, GitHub Copilot, or any other coding agent.
+2. Click the DoubtCatch icon in the Activity Bar.
+3. Click **Capture Evidence**.
+4. Describe the problem when prompted.
+5. Review the captured evidence in the DoubtCatch output channel.
+6. Click **Generate AI Prompt**.
+7. Paste the generated prompt into your AI coding agent.
 
-Step 7 is also offered as a button on the notification that follows step 6.
+The same actions are also available through the VS Code Command Palette as
+**DoubtCatch: Capture Evidence** and **DoubtCatch: Generate Agent Prompt**.
 
 ## Commands
 
@@ -58,6 +100,22 @@ Step 7 is also offered as a button on the notification that follows step 6.
 
 If you run Generate Agent Prompt before capturing anything, DoubtCatch tells you
 to capture evidence first rather than producing an empty prompt.
+
+## Features
+
+- Native VS Code Activity Bar integration
+- DoubtCatch sidebar with the two primary V1 actions
+- Evidence capture from the active VS Code workspace
+- VS Code editor diagnostics
+- Staged, unstaged, and untracked Git changes
+- Optional terminal evidence with command output and exit code
+- Relevant active-file and direct local-import context
+- Secret redaction before evidence reaches the output or prompt
+- Structured `EvidencePacket` shared by the output renderer and prompt builder
+- Evidence-based AI prompt generation
+- Clipboard support for the generated prompt
+- Safe command execution without a shell
+- File and terminal-context size limits
 
 ## What gets collected
 
@@ -111,7 +169,8 @@ code structure intact so an agent can still read the file.
 
 ```
 src/
-├── extension.ts              Command registration and all user prompts
+├── extension.ts              Command registration and user prompts
+├── sidebar.ts                Activity Bar webview sidebar provider
 ├── evidence/
 │   ├── packet.ts             Builds the EvidencePacket — the central object
 │   ├── diagnostics.ts        Editor diagnostics
@@ -142,10 +201,17 @@ EvidencePacket
 The packet is the only thing the output renderer and the prompt builder read, so
 adding a new evidence source means adding one collector and one field.
 
-## Known limitations
+The Activity Bar container and sidebar are declared in `package.json`. The
+sidebar provider sends button actions to the existing extension commands; it
+does not access the filesystem or run terminal commands directly.
+
+## Current limitations
 
 These are real limits of V1, not oversights:
 
+- **No automatic browser capture.** V1 does not automatically capture the
+  Browser DevTools Console, Browser Network tab, or localhost browser runtime
+  errors. Browser and replay integration are planned future areas.
 - **Relevant-file detection is deliberately shallow.** It reads the active file
   and resolves its *direct* relative imports (`./`, `../`) for JavaScript and
   TypeScript only. It is not a dependency graph. Bare package imports, path
@@ -160,17 +226,34 @@ These are real limits of V1, not oversights:
 - Large files are truncated to 8,000 characters and command output to the last
   8,000 characters, so the prompt stays usable.
 
-## Future work
+## Roadmap
 
-Not in V1, and not claimed anywhere in the extension:
+### V1 — Evidence Capture
 
-- automatic verification that a fix actually worked
-- automatic failure replay
-- direct integration with specific agents, or MCP
-- sending evidence to an AI API
-- broader language support in relevant-file detection
+- Diagnostics
+- Git changes
+- Terminal evidence
+- Relevant file context
+- Secret redaction
+- Evidence-based prompt generation
+- Native VS Code sidebar
 
-## Development
+### V2 — Agent Integration
+
+- Direct AI-agent or tool integration
+
+### V3 — Failure Verification
+
+- Reproduce the original failure
+- Verify the fix
+- Feed verification evidence back to the agent
+
+## Requirements and development
+
+- VS Code `1.137.0` or newer
+- Node.js and npm
+
+Install dependencies and run the checks:
 
 ```bash
 npm install
@@ -181,16 +264,21 @@ npm run watch        # rebuild on change
 ```
 
 Press <kbd>F5</kbd> in VS Code to launch an Extension Development Host with
-DoubtCatch loaded.
+DoubtCatch loaded. The Activity Bar contribution is read when that host starts,
+so restart the Extension Development Host after changing the manifest.
 
 Tests run in a real Extension Host via `@vscode/test-cli`, so they need a
 display. CI runs them on Linux under `xvfb-run`.
 
-### Publishing
+### Packaging and publishing
 
-DoubtCatch is not on the Marketplace yet. Before the first `vsce publish`:
+Create and inspect a production VSIX with:
 
-1. Create a publisher at https://marketplace.visualstudio.com/manage and add a
-   `"publisher"` field to `package.json` matching that ID.
-2. Choose a license, add a `LICENSE` file, and set the `"license"` field.
-3. `npx @vscode/vsce package` to produce the `.vsix`, then `vsce publish`.
+```bash
+npx vsce package
+npx vsce ls
+```
+
+The current publisher is `doubt-catch`. Upload the generated `.vsix` manually
+through [Visual Studio Marketplace Publisher Management](https://marketplace.visualstudio.com/manage).
+Publishing is intentionally not automated from this repository.
