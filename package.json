@@ -28,7 +28,9 @@
     "evidence",
     "agent"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:doubtcatch.sidebar"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -53,7 +55,7 @@
         {
           "id": "doubtcatch",
           "title": "DoubtCatch",
-          "icon": "assets/doubtcatch-activity.svg"
+          "icon": "./assets/doubtcatch-activity.svg"
         }
       ]
     },
