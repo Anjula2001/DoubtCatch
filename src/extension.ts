@@ -134,42 +134,50 @@ async function captureEvidence(
   return packet;
 }
 
-async function generateAgentPrompt(): Promise<void> {
+async function generateAgentPrompt(notify = true): Promise<boolean> {
   if (!lastEvidencePacket) {
-    vscode.window.showWarningMessage(
-      'DoubtCatch: No evidence captured yet. Run "DoubtCatch: Capture Evidence" first.',
-    );
-    return;
+    if (notify) {
+      vscode.window.showWarningMessage(
+        'DoubtCatch: No evidence captured yet. Run "DoubtCatch: Capture Evidence" first.',
+      );
+    }
+    return false;
   }
 
   const prompt = buildAgentPrompt(lastEvidencePacket);
 
   await vscode.env.clipboard.writeText(prompt);
 
-  vscode.window.showInformationMessage(
-    "DoubtCatch: Agent prompt copied to clipboard. Paste it into your AI coding agent.",
-  );
+  if (notify) {
+    vscode.window.showInformationMessage(
+      "DoubtCatch: Agent prompt copied to clipboard. Paste it into your AI coding agent.",
+    );
+  }
+
+  return true;
 }
 
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel("DoubtCatch");
   const sidebar = new DoubtCatchViewProvider(context.extensionUri, {
-    capture: async (symptom, commandLine) => {
+    capture: async () => {
       try {
-        return await captureEvidence(output, {
-          symptom,
-          commandLine,
-          notify: false,
-        });
+        return Boolean(
+          await vscode.commands.executeCommand("doubtcatch.captureEvidence"),
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(
           `DoubtCatch: Could not capture evidence — ${message}`,
         );
-        return undefined;
+        return false;
       }
     },
-    generate: generateAgentPrompt,
+    generate: async () =>
+      await vscode.commands.executeCommand<boolean>(
+        "doubtcatch.generateAgentPrompt",
+        false,
+      ),
   });
 
   context.subscriptions.push(
@@ -182,20 +190,19 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("doubtcatch.captureEvidence", async () => {
       try {
         const packet = await captureEvidence(output);
-        if (packet) {
-          sidebar.setPacket(packet);
-        }
+        return Boolean(packet);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(
           `DoubtCatch: Could not capture evidence — ${message}`,
         );
+        return false;
       }
     }),
 
     vscode.commands.registerCommand(
       "doubtcatch.generateAgentPrompt",
-      generateAgentPrompt,
+      (notify?: boolean) => generateAgentPrompt(notify),
     ),
   );
 }
